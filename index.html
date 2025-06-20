@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recolector de Enlaces</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --main-bg: #f3f4f6; }
+        html, body { height: 100%; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--main-bg);
+            color: #374151;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        main {
+             overflow-y: auto;
+        }
+        .btn {
+            padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600;
+            transition: all 0.2s ease-in-out; text-align: center; cursor: pointer; border: 1px solid transparent;
+            display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+        }
+        .btn:disabled {
+            background-color: #d1d5db;
+            cursor: not-allowed;
+        }
+        .btn-primary { background-color: #2563eb; color: white; }
+        .btn-primary:hover:not(:disabled) { background-color: #1d4ed8; }
+        .btn-secondary { background-color: #6b7280; color: white; }
+        .btn-secondary:hover:not(:disabled) { background-color: #4b5563; }
+        .btn-success { background-color: #16a34a; color: white; }
+        .btn-success:hover:not(:disabled) { background-color: #15803d; }
+        .btn-danger { background-color: #dc2626; color: white; }
+        .btn-danger:hover:not(:disabled) { background-color: #b91c1c; }
+        .btn-sm { padding: 0.5rem 1rem; font-size: 0.875rem; }
+
+        .form-input, .form-select {
+            border: 1px solid #d1d5db; border-radius: 0.375rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background-color: #ffffff; color: #333;
+            width: 100%; padding: 0.5rem 0.75rem;
+        }
+        .form-input:focus, .form-select:focus {
+            outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        }
+
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 40; opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s;
+        }
+        .modal-overlay.visible { opacity: 1; visibility: visible; }
+        .modal-container {
+            background: white; padding: 2rem; border-radius: 0.75rem;
+            width: 90%; max-width: 500px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            transform: scale(0.95); transition: transform 0.3s;
+        }
+        .modal-overlay.visible .modal-container { transform: scale(1); }
+    </style>
+</head>
+<body class="flex flex-col">
+
+    <!-- Contenedor Principal de la App -->
+    <div id="appContainer" class="flex flex-col h-full">
+        
+        <!-- ENCABEZADO -->
+        <header id="appHeader" class="p-4 bg-white border-b border-gray-200 flex justify-between items-center flex-shrink-0">
+            <div class="flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mr-3 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">Enlaces Catálogo</h1>
+            </div>
+            <div class="flex items-center gap-4">
+                 <button id="addLinkBtn" class="btn btn-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+                    <span>Añadir Enlace</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- CONTENIDO PRINCIPAL -->
+        <main class="flex-grow p-4 md:p-8 flex flex-col items-center">
+             <div class="bg-white p-8 rounded-xl shadow-md w-full max-w-2xl text-center">
+                <h2 class="text-2xl font-semibold text-gray-700">Enlaces Recopilados</h2>
+                <p id="linkCounter" class="text-6xl font-bold text-blue-600 my-4">0</p>
+                <p class="text-gray-500 mb-6">Añade datos y luego expórtalos a formato JSON.</p>
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <button id="exportJsonBtn" class="btn btn-success w-full" disabled>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v2a2 2 0 01-2 2H7a2 2 0 01-2-2V4zm2 2a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H9a2 2 0 01-2-2V6z" /><path d="M3 9a2 2 0 012-2h10a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /></svg>
+                        <span>Exportar a .JSON</span>
+                    </button>
+                     <button id="clearDataBtn" class="btn btn-danger w-full" disabled>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
+                        <span>Limpiar Datos</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- VISTA PREVIA -->
+            <div id="previewContainer" class="mt-8 w-full max-w-2xl hidden">
+                <div class="flex justify-between items-center border-b pb-2 mb-4">
+                    <h3 class="text-xl font-semibold text-gray-800">Vista Previa JSON</h3>
+                </div>
+                <pre class="bg-gray-800 text-white p-4 rounded-lg text-left text-sm whitespace-pre-wrap overflow-x-auto max-h-96"><code id="previewCode"></code></pre>
+            </div>
+        </main>
+
+        <footer id="appFooter" class="flex-shrink-0 text-center text-xs py-3 bg-gray-200 border-t">
+            <p>&copy; <span id="year"></span> EdUNLu.</p>
+        </footer>
+    </div>
+    
+    <!-- MODAL PARA AÑADIR/EDITAR ENLACE -->
+    <div id="addLinkModal" class="modal-overlay">
+        <div class="modal-container">
+            <h2 id="modalTitle" class="text-2xl font-bold mb-6 text-gray-800">Añadir Nuevo Enlace</h2>
+            <form id="addLinkForm">
+                <div class="space-y-4">
+                    <div>
+                        <label for="linkTitle" class="block text-sm font-medium text-gray-700 mb-1">Título</label>
+                        <input type="text" id="linkTitle" class="form-input" required>
+                    </div>
+                    <div>
+                        <label for="linkAuthor" class="block text-sm font-medium text-gray-700 mb-1">Autor / Fuente</label>
+                        <input type="text" id="linkAuthor" class="form-input" required>
+                    </div>
+                    <div>
+                        <label for="linkCollection" class="block text-sm font-medium text-gray-700 mb-1">Colección</label>
+                        <select id="linkCollection" class="form-select">
+                            <option>Ciencias</option>
+                            <option>Sociedad en movimiento</option>
+                            <option>Aulas</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="linkUrl" class="block text-sm font-medium text-gray-700 mb-1">URL de Destino</label>
+                        <input type="url" id="linkUrl" class="form-input" placeholder="https://..." required>
+                    </div>
+                    <div>
+                        <label for="linkCoverUrl" class="block text-sm font-medium text-gray-700 mb-1">URL de la Portada (Opcional)</label>
+                        <input type="text" id="linkCoverUrl" class="form-input" placeholder="nombre_archivo.gif">
+                    </div>
+                    <div>
+                        <label for="linkPublishDate" class="block text-sm font-medium text-gray-700 mb-1">Fecha de Publicación</label>
+                        <input type="date" id="linkPublishDate" class="form-input" required>
+                    </div>
+                </div>
+                <div class="mt-8 flex justify-end gap-3">
+                    <button type="button" id="cancelModalBtn" class="btn btn-secondary">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Enlace</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script type="module">
+        // --- Global DOM Variables ---
+        const addLinkBtn = document.getElementById('addLinkBtn');
+        const exportJsonBtn = document.getElementById('exportJsonBtn');
+        const clearDataBtn = document.getElementById('clearDataBtn');
+        const addLinkModal = document.getElementById('addLinkModal');
+        const addLinkForm = document.getElementById('addLinkForm');
+        const cancelModalBtn = document.getElementById('cancelModalBtn');
+        const linkCounter = document.getElementById('linkCounter');
+        const previewContainer = document.getElementById('previewContainer');
+        const previewCode = document.getElementById('previewCode');
+        
+        // --- Local Data Store ---
+        let localLinks = [];
+
+        // --- UI Functions ---
+        function showModal() { addLinkModal.classList.add('visible'); }
+        function hideModal() { addLinkModal.classList.remove('visible'); }
+        
+        function updateCounter() {
+            linkCounter.textContent = localLinks.length;
+            const isDisabled = localLinks.length === 0;
+            exportJsonBtn.disabled = isDisabled;
+            clearDataBtn.disabled = isDisabled;
+        }
+
+        function renderPreview() {
+            if (localLinks.length === 0) {
+                previewContainer.classList.add('hidden');
+                return;
+            }
+            
+            previewContainer.classList.remove('hidden');
+            
+            // Stringify each object to a single line with one tab prepended
+            const individualJsonObjects = localLinks.map(link => '\t' + JSON.stringify(link));
+            const content = individualJsonObjects.join(',\n');
+            
+            // Add a trailing comma after the last object
+            previewCode.textContent = content + ',';
+        }
+
+        function createSlug(title) {
+            if (!title) return `link-${Date.now()}`;
+            return title
+                .toLowerCase()
+                .trim()
+                .replace(/[^\w\s-]/g, '') // remove non-word chars
+                .replace(/[\s_-]+/g, '-') // collapse whitespace and replace by -
+                .replace(/^-+|-+$/g, ''); // remove leading/trailing dashes
+        }
+
+        function downloadFile(content, fileName, contentType) {
+            const blob = new Blob([content], { type: contentType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // --- Event Handlers ---
+        function setupEventListeners() {
+            addLinkBtn.addEventListener('click', () => {
+                addLinkForm.reset();
+                showModal();
+            });
+
+            cancelModalBtn.addEventListener('click', hideModal);
+            
+            addLinkForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                const title = document.getElementById('linkTitle').value;
+                const coverInputValue = document.getElementById('linkCoverUrl').value.trim();
+
+                const newLink = {
+                    id: createSlug(title),
+                    title: title,
+                    author: document.getElementById('linkAuthor').value,
+                    collection: document.getElementById('linkCollection').value,
+                    targetUrl: document.getElementById('linkUrl').value,
+                    coverImageUrl: coverInputValue ? `covers/${coverInputValue}` : '',
+                    publishDate: document.getElementById('linkPublishDate').value,
+                };
+                
+                localLinks.push(newLink);
+                updateCounter();
+                renderPreview();
+                hideModal();
+            });
+
+            exportJsonBtn.addEventListener('click', () => {
+                if (localLinks.length === 0) return;
+                // For exporting, we create the full, valid JSON string with brackets
+                const jsonString = JSON.stringify(localLinks, null, 2);
+                downloadFile(jsonString, 'links.json', 'application/json');
+            });
+
+            clearDataBtn.addEventListener('click', () => {
+                // The confirm dialog is replaced with a direct action.
+                if (localLinks.length > 0) {
+                    localLinks = [];
+                    updateCounter();
+                    renderPreview();
+                }
+            });
+        }
+        
+        // --- App Initialization ---
+        function startApp() {
+            document.getElementById('year').textContent = new Date().getFullYear();
+            updateCounter();
+            setupEventListeners();
+            console.log("Aplicación de recolección de enlaces iniciada.");
+        }
+        
+        startApp();
+    </script>
+</body>
+</html>
